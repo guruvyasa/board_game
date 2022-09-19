@@ -21,6 +21,9 @@
             background-color: blue;
             border: 2px solid white;
         }
+        .element{
+            transition: all 0.5s;
+        }
     </style>
 </head>
 <body>
@@ -30,9 +33,83 @@
     <script>
         window.onload = function(){
             let worldMapStr = "_,_,_,_\n"+
-                              "P,_,_,_\n"+
+                              "_,M,_,_\n"+
                               "_,_,_,_\n"+
-                              "_,_,_,_"
+                              "_,_,_,C"
+
+            let assetMap = new Map()
+            assetMap.set("M","assets/mouse.webp")
+            assetMap.set("C","assets/cheese.png")
+
+
+            let directionMap = new Map()
+            directionMap.set("U",[0,-1])
+            directionMap.set("D",[0,1])
+            directionMap.set("L",[-1,0])
+            directionMap.set("R",[1,0])
+
+            let elements = []
+            function collisionHandle(){
+                let [mouse] = elements.filter(e => e.img.src.includes("mouse"))
+                let [collidingObj] = elements.filter(e => e!=mouse && e.pos.x == mouse.pos.x && e.pos.y == mouse.pos.y)
+                setTimeout(()=>removeElement(collidingObj),500)
+            }
+
+            function removeElement(element){
+                console.log(element)
+                elements = elements.filter(e=>e!=element)
+                constants.containerObj.removeChild(element.img)
+            }
+
+            function makeElement({pos,character}){
+                let img = new Image(constants.blockWidth,constants.blockHeight)
+                img.src = assetMap.get(character)
+                img.classList.add("absolute")
+                img.classList.add("element")
+
+                img.style.zIndex = 100
+                constants.containerObj.appendChild(img)
+                let obj = {
+                    pos,
+                    img,
+                    move(x,y){
+                        this.pos.x += x
+                        this.pos.y += y
+                        this.draw()
+                    },
+                    
+                    draw(){
+                        this.img.style.left = (this.pos.x*constants.blockWidth)+"px"
+                        this.img.style.top = (this.pos.y*constants.blockHeight)+"px"
+                    }
+                }
+                obj.draw()
+                return obj
+            }
+
+            document.addEventListener("keydown",(e)=>{
+                const keyCode = e.keyCode
+                if(keyCode == 37){//left key
+                    moveMouse("L")
+                }
+                else if(keyCode == 38){
+                    moveMouse("U")
+                }
+                else if(keyCode == 39){
+                    moveMouse("R")
+                }                
+                else{
+                    moveMouse("D")
+                }
+            })
+
+            function moveMouse(direction){
+                let [mouse] = elements.filter(e => e.img.src.includes("mouse"))
+                let [dx,dy] = directionMap.get(direction)
+                mouse.move(dx,dy)
+                collisionHandle()
+
+            }
 
 
             let constants = {
@@ -40,6 +117,8 @@
                 blockHeight:100,
                 containerObj: document.querySelector(".container"),                
             }
+
+            let nodes = []
 
             function genWorldMap(stringMap){
                 let map = []
@@ -54,9 +133,19 @@
                 let html = ""
                 let [topOffset,leftOffset] = [0,0]
                 
-                for(let row of mapArr){
+                // for(let row of mapArr){
+                for(let i=0;i<mapArr.length;i++){
+                    const row = mapArr[i]
                     leftOffset = 0
-                    for(let col of row){
+                    // for(let col of row){
+                    for(let j=0;j<row.length;j++){
+                        const col = row[j]
+                        if(col != "_"){
+                            elements.push(makeElement({
+                                pos:{x:j,y:i},
+                                character:col
+                            }))
+                        }
                         let blockObj = document.createElement("div")
                         console.log(blockObj)
                         blockObj.classList.add("block")
@@ -68,13 +157,13 @@
                         blockObj.style.top = topOffset+"px"
                         blockObj.style.left = leftOffset+"px"
                         leftOffset+=constants.blockWidth
-                        // nodes.push(blockObj)
-                        constants.containerObj.appendChild(blockObj)
+                        nodes.push(blockObj)
+                        // constants.containerObj.appendChild(blockObj)
 
                     }
                     topOffset += constants.blockHeight
                 }
-                // constants.containerObj.append(nodes)
+                constants.containerObj.append(...nodes)
 
                 // constants.containerObj.innerHTML = html
                 
